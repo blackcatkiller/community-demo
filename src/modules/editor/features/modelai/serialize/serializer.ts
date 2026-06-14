@@ -52,12 +52,14 @@ export function registerReflect(
   }
 }
 
+type SerializableTypedArray = Float32Array | Uint32Array;
+
 export function registerTypeArray(
-  typeArray: new (array: number[]) => Float16Array | Float32Array | Uint32Array
+  typeArray: new (array: number[]) => SerializableTypedArray
 ) {
   const data = {
     ctor: typeArray,
-    serialize: (target: Float16Array | Float32Array | Uint32Array) => {
+    serialize: (target: SerializableTypedArray) => {
       return {
         buffer: Array.from(target)
       };
@@ -77,7 +79,12 @@ export function registerTypeArray(
     ]
   });
 }
-registerTypeArray(Float16Array);
+const MaybeFloat16Array = globalThis.Float16Array as
+  | (new (array: number[]) => SerializableTypedArray)
+  | undefined;
+if (MaybeFloat16Array) {
+  registerTypeArray(MaybeFloat16Array);
+}
 registerTypeArray(Float32Array);
 registerTypeArray(Uint32Array);
 
