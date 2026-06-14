@@ -16,11 +16,15 @@ import {
   Scaling,
   Scan,
 } from "lucide-react";
+import { useRef } from "react";
 
-import { EditorViewport } from "@/modules/editor/editor-viewport";
+import { ModelAIViewport } from "@/modules/editor/modelai-viewport";
+import { useModelAIHostStore } from "@/modules/editor/modelai-host-store";
 import {
   type CameraPreset,
   type EditorTool,
+  ObjectSnapType,
+  ObjectSnapTypeUtils,
   useEditorStore,
 } from "@/modules/editor/editor-store";
 
@@ -116,7 +120,23 @@ export function EditorShell({
   const activeTool = useEditorStore((state) => state.activeTool);
   const setActiveTool = useEditorStore((state) => state.setActiveTool);
   const selectedObjectId = useEditorStore((state) => state.selectedObjectId);
-  const nodes = useEditorStore((state) => state.nodes);
+  const legacyNodes = useEditorStore((state) => state.nodes);
+  const modelaiNodes = useModelAIHostStore((state) => state.nodes);
+  const importFiles = useModelAIHostStore((state) => state.importFiles);
+  const importStatus = useModelAIHostStore((state) => state.importStatus);
+  const importMessage = useModelAIHostStore((state) => state.importMessage);
+  const selectModelAINode = useModelAIHostStore((state) => state.selectNode);
+  const toggleModelAINodeVisibility = useModelAIHostStore((state) => state.toggleNodeVisibility);
+  const setModelAICameraView = useModelAIHostStore((state) => state.setCameraView);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const hasModelAINodes = modelaiNodes.length > 0;
+  const nodes = modelaiNodes.length > 0 ? modelaiNodes : legacyNodes.map((node) => ({
+    id: node.id,
+    name: node.name,
+    visible: node.visible,
+    depth: 0,
+    kind: node.type === "group" ? "group" : node.type === "step" ? "shape" : "node",
+  }));
   const selectedNode = nodes.find((node) => node.id === selectedObjectId);
   const cameraPreset = useEditorStore((state) => state.cameraPreset);
   const setCameraPreset = useEditorStore((state) => state.setCameraPreset);
@@ -124,12 +144,13 @@ export function EditorShell({
   const toggleNodeVisibility = useEditorStore((state) => state.toggleNodeVisibility);
   const snap = useEditorStore((state) => state.snap);
   const setSnapEnabled = useEditorStore((state) => state.setSnapEnabled);
-  const toggleSnapMode = useEditorStore((state) => state.toggleSnapMode);
+  const setFaceSnapEnabled = useEditorStore((state) => state.setFaceSnapEnabled);
+  const setTrackingEnabled = useEditorStore((state) => state.setTrackingEnabled);
+  const toggleObjectSnapType = useEditorStore((state) => state.toggleObjectSnapType);
   const setSnapStep = useEditorStore((state) => state.setSnapStep);
   const arrayCopy = useEditorStore((state) => state.arrayCopy);
   const setArrayCopy = useEditorStore((state) => state.setArrayCopy);
   const executeArrayCopy = useEditorStore((state) => state.executeArrayCopy);
-  const loadStepPlaceholder = useEditorStore((state) => state.loadStepPlaceholder);
   const nudgeSelected = useEditorStore((state) => state.nudgeSelected);
   const rotateSelected = useEditorStore((state) => state.rotateSelected);
 
@@ -155,17 +176,30 @@ export function EditorShell({
 
         <div className="space-y-3">
           <PanelSection title="STEP Loader">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".step,.stp,.iges,.igs"
+              className="hidden"
+              onChange={(event) => {
+                const files = Array.from(event.target.files ?? []);
+                void importFiles(files);
+                event.target.value = "";
+              }}
+            />
             <button
               type="button"
-              onClick={() => loadStepPlaceholder("product_D01.step")}
+              onClick={() => {
+                fileInputRef.current?.click();
+              }}
+              disabled={importStatus === "loading"}
               className="flex w-full items-center justify-center gap-2 rounded-md bg-[#d8dfc8] px-3 py-2 text-sm font-semibold text-[#171717]"
             >
               <FileUp className="size-4" />
-              Load STEP placeholder
+              {importStatus === "loading" ? "Importing..." : "Import STEP / IGES"}
             </button>
             <p className="mt-2 text-xs leading-5 text-white/45">
-              The reference app uses OCC/Chili wasm. This keeps the workflow
-              slot ready until real STEP parsing is wired.
+              {importMessage}
             </p>
           </PanelSection>
 
@@ -182,19 +216,31 @@ export function EditorShell({
                         : "bg-white/[0.04] text-white/75"
                     }`}
                   >
-                    <Boxes className="size-4" />
+                    <Boxes
+                      className="size-4"
+                      style={{ marginLeft: `${node.depth * 10}px` }}
+                    />
                     <button
                       type="button"
-                      onClick={() => selectObject(node.id)}
+                      onClick={() => {
+                        selectObject(node.id);
+                        if (hasModelAINodes) selectModelAINode(node.id);
+                      }}
                       className="truncate text-left"
-                      title={node.name}
+                      title={`${node.kind}: ${node.name}`}
                     >
                       {node.name}
                     </button>
                     <button
                       type="button"
                       aria-label="Toggle visibility"
-                      onClick={() => toggleNodeVisibility(node.id)}
+                      onClick={() => {
+                        if (hasModelAINodes) {
+                          toggleModelAINodeVisibility(node.id);
+                        } else {
+                          toggleNodeVisibility(node.id);
+                        }
+                      }}
                       className="grid size-7 place-items-center rounded hover:bg-black/10"
                     >
                       {node.visible ? (
@@ -211,7 +257,7 @@ export function EditorShell({
         </div>
       </aside>
 
-      <EditorViewport />
+      <ModelAIViewport />
 
       <aside className="overflow-y-auto border-l border-white/10 bg-[#181818] p-4">
         <div className="mb-5 flex items-center gap-2">
@@ -243,7 +289,10 @@ export function EditorShell({
                 <button
                   key={preset.id}
                   type="button"
-                  onClick={() => setCameraPreset(preset.id)}
+                  onClick={() => {
+                    setCameraPreset(preset.id);
+                    setModelAICameraView(preset.id);
+                  }}
                   className={`rounded px-2 py-2 text-xs font-medium ${
                     cameraPreset === preset.id
                       ? "bg-[#d8dfc8] text-[#171717]"
@@ -268,30 +317,60 @@ export function EditorShell({
               </span>
               <input
                 type="checkbox"
-                checked={snap.enabled}
+                checked={snap.enableSnap}
                 onChange={(event) => setSnapEnabled(event.target.checked)}
               />
             </label>
             <div className="grid grid-cols-3 gap-2">
-              {(["grid", "object", "vertex"] as const).map((mode) => (
+              {[
+                { label: "endpoint", type: ObjectSnapType.endPoint },
+                { label: "midpoint", type: ObjectSnapType.midPoint },
+                { label: "center", type: ObjectSnapType.center },
+                { label: "perp", type: ObjectSnapType.perpendicular },
+                { label: "intersect", type: ObjectSnapType.intersection },
+              ].map((mode) => (
                 <button
-                  key={mode}
+                  key={mode.label}
                   type="button"
-                  onClick={() => toggleSnapMode(mode)}
+                  onClick={() => toggleObjectSnapType(mode.type)}
                   className={`rounded px-2 py-2 text-xs capitalize ${
-                    snap[mode]
+                    ObjectSnapTypeUtils.hasType(snap.snapTypes, mode.type)
                       ? "bg-[#d8dfc8] text-[#171717]"
                       : "bg-white/[0.06] text-white/65"
                   }`}
                 >
-                  {mode}
+                  {mode.label}
                 </button>
               ))}
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setFaceSnapEnabled(!snap.enableFaceSnap)}
+                className={`rounded px-2 py-2 text-xs ${
+                  snap.enableFaceSnap
+                    ? "bg-[#d8dfc8] text-[#171717]"
+                    : "bg-white/[0.06] text-white/65"
+                }`}
+              >
+                face
+              </button>
+              <button
+                type="button"
+                onClick={() => setTrackingEnabled(!snap.enableTracking)}
+                className={`rounded px-2 py-2 text-xs ${
+                  snap.enableTracking
+                    ? "bg-[#d8dfc8] text-[#171717]"
+                    : "bg-white/[0.06] text-white/65"
+                }`}
+              >
+                tracking
+              </button>
             </div>
             <div className="mt-3">
               <NumberField
                 label="Grid step"
-                value={snap.step}
+                value={snap.grid}
                 min={0.05}
                 step={0.05}
                 onChange={setSnapStep}
@@ -306,21 +385,21 @@ export function EditorShell({
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
-                onClick={() => nudgeSelected(0, snap.step)}
+                onClick={() => nudgeSelected(0, snap.grid)}
                 className="rounded bg-white/[0.06] px-2 py-2 text-xs text-white/70"
               >
                 +X
               </button>
               <button
                 type="button"
-                onClick={() => nudgeSelected(1, snap.step)}
+                onClick={() => nudgeSelected(1, snap.grid)}
                 className="rounded bg-white/[0.06] px-2 py-2 text-xs text-white/70"
               >
                 +Y
               </button>
               <button
                 type="button"
-                onClick={() => nudgeSelected(2, snap.step)}
+                onClick={() => nudgeSelected(2, snap.grid)}
                 className="rounded bg-white/[0.06] px-2 py-2 text-xs text-white/70"
               >
                 +Z

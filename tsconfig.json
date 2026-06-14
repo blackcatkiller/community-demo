@@ -9,6 +9,7 @@
     "moduleDetection": "force",
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
+    "experimentalDecorators": true,
 
     /* Strictness */
     "strict": true,
@@ -27,7 +28,12 @@
     /* Path Aliases */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@/features/modelai/*": ["./src/modules/editor/features/modelai/*"],
+      "@modelai/*": ["./src/modules/editor/features/modelai/*"],
+      "chili-wasm": [
+        "./src/modules/editor/features/modelai/wasm/chili-wasm.d.ts"
+      ]
     }
   },
   "include": [
@@ -38,5 +44,9 @@
     "**/*.js",
     ".next/types/**/*.ts"
   ],
-  "exclude": ["node_modules", "generated"]
+  "exclude": [
+    "node_modules",
+    "generated",
+    "src/modules/editor/features/modelai"
+  ]
 }

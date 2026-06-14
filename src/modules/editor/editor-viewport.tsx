@@ -8,12 +8,14 @@ import {
 } from "@react-three/drei";
 import { Canvas, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
+import { BoxSelect, Crosshair, Maximize2 } from "lucide-react";
 import type { Mesh } from "three";
-import { Box3, Vector3 } from "three";
 
+import { getCameraPose } from "@/modules/editor/kernel/camera";
 import {
-  type CameraPreset,
   type EditorNode,
+  ObjectSnapType,
+  ObjectSnapTypeUtils,
   useEditorStore,
 } from "@/modules/editor/editor-store";
 
@@ -28,33 +30,9 @@ function CameraRig() {
   const { camera } = useThree();
 
   useEffect(() => {
-    const visibleNodes = nodes.filter((node) => node.visible);
-    const center = new Vector3();
-
-    if (visibleNodes.length > 0) {
-      const box = new Box3();
-      visibleNodes.forEach((node) => {
-        box.expandByPoint(new Vector3(...node.position));
-      });
-      box.getCenter(center);
-    }
-
-    const distance = cameraPreset === "fit" ? 7 : 6;
-    const presets: Record<CameraPreset, [number, number, number]> = {
-      iso: [distance, distance, distance],
-      front: [0, 2.5, distance],
-      right: [distance, 2.5, 0],
-      top: [0, distance, 0.001],
-      fit: [distance, distance * 0.8, distance],
-    };
-    const offset = presets[cameraPreset];
-
-    camera.position.set(
-      center.x + offset[0],
-      center.y + offset[1],
-      center.z + offset[2],
-    );
-    camera.lookAt(center);
+    const pose = getCameraPose(nodes, cameraPreset);
+    camera.position.copy(pose.position);
+    camera.lookAt(pose.center);
     camera.updateProjectionMatrix();
   }, [camera, cameraPreset, nodes]);
 
@@ -126,7 +104,55 @@ export function EditorViewport() {
   const selectObject = useEditorStore((state) => state.selectObject);
   const nodes = useEditorStore((state) => state.nodes);
   const snap = useEditorStore((state) => state.snap);
+  const setCameraPreset = useEditorStore((state) => state.setCameraPreset);
+  const setSnapEnabled = useEditorStore((state) => state.setSnapEnabled);
+  const setFaceSnapEnabled = useEditorStore((state) => state.setFaceSnapEnabled);
+  const setTrackingEnabled = useEditorStore((state) => state.setTrackingEnabled);
+  const toggleObjectSnapType = useEditorStore((state) => state.toggleObjectSnapType);
   const stepMessage = useEditorStore((state) => state.stepMessage);
+
+  const snapItems = [
+    {
+      label: "启用捕捉",
+      checked: snap.enableSnap,
+      onChange: () => setSnapEnabled(!snap.enableSnap),
+    },
+    {
+      label: "端点",
+      checked: ObjectSnapTypeUtils.hasType(snap.snapTypes, ObjectSnapType.endPoint),
+      onChange: () => toggleObjectSnapType(ObjectSnapType.endPoint),
+    },
+    {
+      label: "中点",
+      checked: ObjectSnapTypeUtils.hasType(snap.snapTypes, ObjectSnapType.midPoint),
+      onChange: () => toggleObjectSnapType(ObjectSnapType.midPoint),
+    },
+    {
+      label: "圆心",
+      checked: ObjectSnapTypeUtils.hasType(snap.snapTypes, ObjectSnapType.center),
+      onChange: () => toggleObjectSnapType(ObjectSnapType.center),
+    },
+    {
+      label: "垂足",
+      checked: ObjectSnapTypeUtils.hasType(snap.snapTypes, ObjectSnapType.perpendicular),
+      onChange: () => toggleObjectSnapType(ObjectSnapType.perpendicular),
+    },
+    {
+      label: "交点",
+      checked: ObjectSnapTypeUtils.hasType(snap.snapTypes, ObjectSnapType.intersection),
+      onChange: () => toggleObjectSnapType(ObjectSnapType.intersection),
+    },
+    {
+      label: "面",
+      checked: snap.enableFaceSnap,
+      onChange: () => setFaceSnapEnabled(!snap.enableFaceSnap),
+    },
+    {
+      label: "追踪",
+      checked: snap.enableTracking,
+      onChange: () => setTrackingEnabled(!snap.enableTracking),
+    },
+  ];
 
   return (
     <section className="relative bg-[#101214]">
@@ -143,22 +169,55 @@ export function EditorViewport() {
         ))}
         <Grid
           args={[16, 16]}
-          cellSize={snap.step}
+          cellSize={snap.grid}
           cellThickness={0.45}
           cellColor="#4b5563"
-          sectionSize={snap.step * 4}
+          sectionSize={snap.grid * 4}
           sectionThickness={1}
-          sectionColor={snap.enabled && snap.grid ? "#d8dfc8" : "#555555"}
+          sectionColor={snap.enableSnap ? "#d8dfc8" : "#555555"}
           position={[0, -0.01, 0]}
         />
         <Environment preset="city" />
         <OrbitControls makeDefault />
       </Canvas>
-      <div className="pointer-events-none absolute left-4 top-4 rounded-md border border-white/10 bg-black/35 px-3 py-2 text-xs text-white/70">
-        Camera controls / STEP / nodes / snaps / transform ready
+      <div className="absolute left-3 top-3 z-10 flex flex-col gap-2">
+        <button
+          type="button"
+          title="Fit content"
+          aria-label="Fit content"
+          onClick={() => setCameraPreset("fit")}
+          className="grid size-8 place-items-center rounded border border-white/15 bg-[#171921] text-white/75 transition hover:bg-white/10 hover:text-white"
+        >
+          <Maximize2 className="size-4" />
+        </button>
+        <button
+          type="button"
+          title="Box select"
+          aria-label="Box select"
+          onClick={() => selectObject(null)}
+          className="grid size-8 place-items-center rounded border border-white/15 bg-[#171921] text-white/75 transition hover:bg-white/10 hover:text-white"
+        >
+          <BoxSelect className="size-4" />
+        </button>
+      </div>
+      <div className="pointer-events-none absolute inset-0 grid place-items-center">
+        <Crosshair className="size-7 text-white/35" strokeWidth={1.4} />
+      </div>
+      <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded border border-white/10 bg-[#161820]/95 px-3 py-1.5 text-xs text-white/80 shadow-[0_10px_30px_rgb(0_0_0/0.35)]">
+        {snapItems.map((item) => (
+          <label key={item.label} className="flex items-center gap-1 whitespace-nowrap">
+            <input
+              type="checkbox"
+              checked={item.checked}
+              onChange={item.onChange}
+              className="size-3 accent-[#4d7cff]"
+            />
+            {item.label}
+          </label>
+        ))}
       </div>
       <div className="pointer-events-none absolute bottom-4 left-4 rounded-md border border-white/10 bg-black/35 px-3 py-2 text-xs text-white/70">
-        Snap: {snap.enabled ? "on" : "off"} / grid {snap.step} / {stepMessage}
+        STEP / nodes / camera ready · grid {snap.grid} · {stepMessage}
       </div>
     </section>
   );

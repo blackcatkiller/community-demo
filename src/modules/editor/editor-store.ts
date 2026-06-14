@@ -1,31 +1,21 @@
 import { create } from "zustand";
 
+import {
+  createDefaultSnapConfig,
+  ObjectSnapType,
+  ObjectSnapTypeUtils,
+  type SnapConfig as ModelAISnapConfig,
+} from "@modelai/selection/snapConfig";
+import { appendNode, getUniqueNodeName } from "@/modules/editor/kernel/node-system";
+import { parseStepFilePlaceholder } from "@/modules/editor/kernel/step-parser";
+import type { EditorNode, Vec3 } from "@/modules/editor/kernel/types";
+
 export type EditorTool = "select" | "move" | "rotate" | "scale";
 export type CameraPreset = "iso" | "front" | "right" | "top" | "fit";
-export type SnapMode = "grid" | "object" | "vertex";
 export type StepStatus = "idle" | "loading" | "ready" | "error";
 
-export type Vec3 = [number, number, number];
-
-export type EditorNode = {
-  id: string;
-  name: string;
-  type: "mesh" | "step" | "array-instance";
-  visible: boolean;
-  color: string;
-  position: Vec3;
-  rotation: Vec3;
-  scale: Vec3;
-  parentId?: string;
-  sourceId?: string;
-};
-
-export type SnapSettings = {
-  enabled: boolean;
-  grid: boolean;
-  object: boolean;
-  vertex: boolean;
-  step: number;
+export type EditorSnapConfig = ModelAISnapConfig & {
+  grid: number;
   rotationStep: number;
 };
 
@@ -46,7 +36,7 @@ type EditorState = {
   stepStatus: StepStatus;
   stepMessage: string;
   nodes: EditorNode[];
-  snap: SnapSettings;
+  snap: EditorSnapConfig;
   arrayCopy: ArrayCopySettings;
   setActiveTool: (tool: EditorTool) => void;
   selectObject: (id: string | null) => void;
@@ -59,11 +49,13 @@ type EditorState = {
   nudgeSelected: (axis: 0 | 1 | 2, amount: number) => void;
   rotateSelected: (axis: 0 | 1 | 2, amount: number) => void;
   setSnapEnabled: (enabled: boolean) => void;
-  toggleSnapMode: (mode: SnapMode) => void;
+  setFaceSnapEnabled: (enabled: boolean) => void;
+  setTrackingEnabled: (enabled: boolean) => void;
+  toggleObjectSnapType: (snapType: ObjectSnapType) => void;
   setSnapStep: (step: number) => void;
   setArrayCopy: (settings: Partial<ArrayCopySettings>) => void;
   executeArrayCopy: () => void;
-  loadStepPlaceholder: (fileName?: string) => void;
+  loadStepPlaceholder: (fileName?: string) => Promise<void>;
 };
 
 const initialNodes: EditorNode[] = [
@@ -104,11 +96,12 @@ function roundToStep(value: number, step: number) {
   return Math.round(value / step) * step;
 }
 
-function snapVec3(vector: Vec3, step: number): Vec3 {
+function snapVec3(vector: Vec3, snap: EditorSnapConfig): Vec3 {
+  if (!snap.enableSnap) return vector;
   return [
-    roundToStep(vector[0], step),
-    roundToStep(vector[1], step),
-    roundToStep(vector[2], step),
+    roundToStep(vector[0], snap.grid),
+    roundToStep(vector[1], snap.grid),
+    roundToStep(vector[2], snap.grid),
   ];
 }
 
@@ -116,18 +109,6 @@ function offsetVec3(vector: Vec3, axis: 0 | 1 | 2, amount: number): Vec3 {
   const next: Vec3 = [...vector];
   next[axis] += amount;
   return next;
-}
-
-function getUniqueNodeName(nodes: EditorNode[], baseName: string) {
-  const existing = new Set(nodes.map((node) => node.name));
-  if (!existing.has(baseName)) return baseName;
-
-  let index = 2;
-  while (existing.has(`${baseName} ${index}`)) {
-    index += 1;
-  }
-
-  return `${baseName} ${index}`;
 }
 
 export const useEditorStore = create<EditorState>((set, get) => ({
@@ -138,11 +119,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
   stepMessage: "Demo STEP placeholder loaded",
   nodes: initialNodes,
   snap: {
-    enabled: true,
-    grid: true,
-    object: true,
-    vertex: false,
-    step: 0.25,
+    ...createDefaultSnapConfig(),
+    grid: 0.25,
     rotationStep: 15,
   },
   arrayCopy: {
@@ -168,8 +146,8 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       nodes: state.nodes.map((node) => {
         if (node.id !== id) return node;
         const position =
-          transform.position && state.snap.enabled && state.snap.grid
-            ? snapVec3(transform.position, state.snap.step)
+          transform.position
+            ? snapVec3(transform.position, state.snap)
             : transform.position;
 
         return {
@@ -189,8 +167,7 @@ export const useEditorStore = create<EditorState>((set, get) => ({
         const rawPosition = offsetVec3(node.position, axis, amount);
         return {
           ...node,
-          position:
-            snap.enabled && snap.grid ? snapVec3(rawPosition, snap.step) : rawPosition,
+          position: snapVec3(rawPosition, snap),
         };
       }),
     }));
@@ -208,12 +185,23 @@ export const useEditorStore = create<EditorState>((set, get) => ({
     }));
   },
   setSnapEnabled: (enabled) =>
-    set((state) => ({ snap: { ...state.snap, enabled } })),
-  toggleSnapMode: (mode) =>
-    set((state) => ({ snap: { ...state.snap, [mode]: !state.snap[mode] } })),
+    set((state) => ({ snap: { ...state.snap, enableSnap: enabled } })),
+  setFaceSnapEnabled: (enabled) =>
+    set((state) => ({ snap: { ...state.snap, enableFaceSnap: enabled } })),
+  setTrackingEnabled: (enabled) =>
+    set((state) => ({ snap: { ...state.snap, enableTracking: enabled } })),
+  toggleObjectSnapType: (snapType) =>
+    set((state) => ({
+      snap: {
+        ...state.snap,
+        snapTypes: ObjectSnapTypeUtils.hasType(state.snap.snapTypes, snapType)
+          ? ObjectSnapTypeUtils.removeType(state.snap.snapTypes, snapType)
+          : ObjectSnapTypeUtils.addType(state.snap.snapTypes, snapType),
+      },
+    })),
   setSnapStep: (step) =>
     set((state) => ({
-      snap: { ...state.snap, step: Math.max(0.05, step) },
+      snap: { ...state.snap, grid: Math.max(0.05, step) },
     })),
   setArrayCopy: (settings) =>
     set((state) => ({ arrayCopy: { ...state.arrayCopy, ...settings } })),
@@ -273,25 +261,25 @@ export const useEditorStore = create<EditorState>((set, get) => ({
       set({ nodes: [...nodes, ...copies], selectedObjectId: copies.at(-1)?.id ?? source.id });
     }
   },
-  loadStepPlaceholder: (fileName = "imported-part.step") =>
-    set((state) => {
-      const id = `step-${Date.now().toString(36)}`;
-      const node: EditorNode = {
-        id,
-        name: getUniqueNodeName(state.nodes, fileName.replace(/\.(stp|step)$/i, "")),
-        type: "step",
-        visible: true,
-        color: "#8fb8d1",
-        position: [0, 1.2, 2.4],
-        rotation: [0, 0, 0],
-        scale: [1, 1, 1],
-      };
-
-      return {
-        nodes: [...state.nodes, node],
-        selectedObjectId: id,
+  loadStepPlaceholder: async (fileName = "imported-part.step") => {
+    set({ stepStatus: "loading", stepMessage: `Parsing ${fileName}...` });
+    try {
+      const { nodes } = get();
+      const result = await parseStepFilePlaceholder(fileName, nodes);
+      set((state) => ({
+        nodes: appendNode(state.nodes, result.node),
+        selectedObjectId: result.node.id,
         stepStatus: "ready",
-        stepMessage: `Loaded STEP placeholder: ${fileName}`,
-      };
-    }),
+        stepMessage: result.diagnostics.at(-1) ?? `Loaded ${fileName}`,
+      }));
+    } catch (error) {
+      set({
+        stepStatus: "error",
+        stepMessage: error instanceof Error ? error.message : String(error),
+      });
+    }
+  },
 }));
+
+export { ObjectSnapType, ObjectSnapTypeUtils };
+export type { EditorNode, Vec3 };
