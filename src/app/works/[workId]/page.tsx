@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { BrandLogo } from "@/components/brand-logo";
 import { WorkViewer } from "@/modules/works/components/work-viewer";
 import {
   getDefaultVersion,
@@ -35,15 +36,15 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
   }
 
   return (
-    <main className="min-h-screen bg-[#f6f2e8] text-[#171717]">
-      <header className="border-b border-black/10 bg-[#f6f2e8]">
+    <main className="min-h-screen bg-[#0e1116] text-[#f4f1e8]">
+      <header className="border-b border-white/10 bg-[#0e1116]">
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
-          <Link href="/" className="text-lg font-semibold">
-            Community Studio
+          <Link href="/" aria-label="Community Studio">
+            <BrandLogo />
           </Link>
           <Link
             href={`/works/${work.id}/versions/${currentVersion.id}/edit`}
-            className="rounded-md bg-[#171717] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#3b6f8f]"
+            className="rounded-md bg-[#f4f1e8] px-4 py-2 text-sm font-medium text-[#111418] transition hover:bg-[#d8dfc8]"
           >
             Edit this version
           </Link>
@@ -54,30 +55,30 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
         <div className="space-y-6">
           <div>
             <div className="mb-3 flex flex-wrap items-center gap-2">
-              <span className="rounded bg-white px-2 py-1 text-xs font-medium capitalize text-black/60">
+              <span className="rounded bg-white/[0.08] px-2 py-1 text-xs font-medium capitalize text-white/70">
                 {work.type}
               </span>
               {work.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="rounded border border-black/10 px-2 py-1 text-xs text-black/55"
+                  className="rounded border border-white/10 px-2 py-1 text-xs text-white/55"
                 >
                   {tag}
                 </span>
               ))}
             </div>
             <h1 className="text-4xl font-bold">{work.title}</h1>
-            <p className="mt-3 max-w-3xl leading-7 text-black/65">
+            <p className="mt-3 max-w-3xl leading-7 text-white/65">
               {work.description}
             </p>
           </div>
 
           <WorkViewer tone={currentVersion.thumbnailTone} label={currentVersion.assetLabel} />
 
-          <section className="rounded-lg border border-black/10 bg-white p-5">
+          <section className="rounded-lg border border-white/10 bg-white/[0.06] p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold">Discussion</h2>
-              <span className="text-sm text-black/50">
+              <span className="text-sm text-white/50">
                 {work.commentCount} comments
               </span>
             </div>
@@ -85,13 +86,13 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
               {comments.map((comment) => (
                 <article
                   key={comment.id}
-                  className="rounded-md border border-black/10 bg-[#f6f2e8] p-4"
+                  className="rounded-md border border-white/10 bg-[#151922] p-4"
                 >
                   <div className="flex items-center justify-between text-sm">
                     <strong>{comment.author.name}</strong>
-                    <span className="text-black/45">{comment.createdAt}</span>
+                    <span className="text-white/45">{comment.createdAt}</span>
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-black/65">
+                  <p className="mt-2 text-sm leading-6 text-white/65">
                     {comment.content}
                   </p>
                 </article>
@@ -101,33 +102,33 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
         </div>
 
         <aside className="space-y-4">
-          <section className="rounded-lg border border-black/10 bg-white p-5">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-black/45">
+          <section className="rounded-lg border border-white/10 bg-white/[0.06] p-5">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-white/45">
               Current version
             </h2>
             <div className="mt-3">
               <div className="text-lg font-semibold">{currentVersion.title}</div>
-              <p className="mt-2 text-sm leading-6 text-black/60">
+              <p className="mt-2 text-sm leading-6 text-white/60">
                 {currentVersion.description}
               </p>
-              <div className="mt-4 text-sm text-black/55">
+              <div className="mt-4 text-sm text-white/55">
                 by {currentVersion.author.name} on {currentVersion.createdAt}
               </div>
             </div>
           </section>
 
-          <section className="rounded-lg border border-black/10 bg-white p-5">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.16em] text-black/45">
+          <section className="rounded-lg border border-white/10 bg-white/[0.06] p-5">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.16em] text-white/45">
               Branches
             </h2>
             <div className="space-y-3">
               {branches.map((branch) => (
                 <div
                   key={branch.id}
-                  className="rounded-md border border-black/10 bg-[#f6f2e8] p-3"
+                  className="rounded-md border border-white/10 bg-[#151922] p-3"
                 >
                   <div className="font-medium">{branch.name}</div>
-                  <div className="mt-1 text-xs text-black/50">
+                  <div className="mt-1 text-xs text-white/50">
                     head: {branch.headVersionId}
                   </div>
                 </div>
@@ -135,8 +136,8 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
             </div>
           </section>
 
-          <section className="rounded-lg border border-black/10 bg-white p-5">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.16em] text-black/45">
+          <section className="rounded-lg border border-white/10 bg-white/[0.06] p-5">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-[0.16em] text-white/45">
               Versions
             </h2>
             <div className="space-y-3">
@@ -144,10 +145,10 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
                 <Link
                   key={version.id}
                   href={`/works/${work.id}/versions/${version.id}/edit`}
-                  className="block rounded-md border border-black/10 p-3 transition hover:border-[#3b6f8f] hover:bg-[#f6f2e8]"
+                  className="block rounded-md border border-white/10 p-3 transition hover:border-[#d8dfc8]/70 hover:bg-white/[0.08]"
                 >
                   <div className="font-medium">{version.title}</div>
-                  <div className="mt-1 text-xs text-black/50">
+                  <div className="mt-1 text-xs text-white/50">
                     {version.id} / parent: {version.parentVersionId ?? "root"}
                   </div>
                 </Link>
@@ -155,18 +156,18 @@ export default async function WorkDetailPage({ params }: WorkDetailPageProps) {
             </div>
           </section>
 
-          <section className="grid grid-cols-3 gap-2 rounded-lg border border-black/10 bg-white p-4 text-center text-sm">
+          <section className="grid grid-cols-3 gap-2 rounded-lg border border-white/10 bg-white/[0.06] p-4 text-center text-sm">
             <div>
               <strong className="block">{work.likeCount}</strong>
-              <span className="text-black/50">likes</span>
+              <span className="text-white/50">likes</span>
             </div>
             <div>
               <strong className="block">{work.favoriteCount}</strong>
-              <span className="text-black/50">saves</span>
+              <span className="text-white/50">saves</span>
             </div>
             <div>
               <strong className="block">{work.branchCount}</strong>
-              <span className="text-black/50">branches</span>
+              <span className="text-white/50">branches</span>
             </div>
           </section>
         </aside>

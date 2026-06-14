@@ -7,10 +7,10 @@ type WorkPreviewProps = {
 export function WorkPreview({ tone, label, className = "" }: WorkPreviewProps) {
   return (
     <div
-      className={`relative overflow-hidden rounded-md border border-black/10 ${className}`}
+      className={`relative overflow-hidden rounded-md border border-white/10 ${className}`}
       style={{ backgroundColor: tone }}
     >
-      <div className="absolute inset-0 bg-[linear-gradient(135deg,transparent_0%,rgb(255_255_255/0.28)_45%,transparent_46%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(135deg,rgb(0_0_0/0.18)_0%,rgb(255_255_255/0.22)_45%,rgb(0_0_0/0.18)_46%)]" />
       <div className="absolute left-4 top-4 rounded bg-black/25 px-2 py-1 text-xs font-medium text-white">
         {label}
       </div>

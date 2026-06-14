@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { BrandLogo } from "@/components/brand-logo";
 import { EditorShell } from "@/modules/editor/editor-shell";
 import { getWork, getWorkVersion } from "@/modules/works/queries";
 
@@ -21,11 +22,11 @@ export default async function VersionEditorPage({ params }: EditorPageProps) {
   }
 
   return (
-    <main className="h-screen overflow-hidden bg-[#111111] text-white">
+    <main className="h-screen overflow-hidden bg-[#0e1116] text-white">
       <header className="flex h-14 items-center justify-between border-b border-white/10 px-4">
         <div className="flex items-center gap-4">
-          <Link href={`/works/${work.id}`} className="text-sm font-semibold">
-            Community Studio
+          <Link href={`/works/${work.id}`} aria-label="Community Studio">
+            <BrandLogo />
           </Link>
           <div className="hidden text-xs text-white/45 md:block">
             Editing from {version.id}
@@ -40,7 +41,7 @@ export default async function VersionEditorPage({ params }: EditorPageProps) {
           </button>
           <button
             type="button"
-            className="rounded-md bg-[#d8dfc8] px-3 py-2 text-xs font-semibold text-[#171717]"
+            className="rounded-md bg-[#f4f1e8] px-3 py-2 text-xs font-semibold text-[#111418]"
           >
             Submit version
           </button>

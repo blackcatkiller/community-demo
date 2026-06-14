@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { BrandLogo } from "@/components/brand-logo";
 import { WorkCard } from "@/modules/works/components/work-card";
 import { getWorks } from "@/modules/works/queries";
 import type { WorkType } from "@/modules/works/types";
@@ -22,16 +23,16 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const works = getWorks(activeType);
 
   return (
-    <main className="min-h-screen bg-[#f6f2e8] text-[#171717]">
-      <header className="sticky top-0 z-20 border-b border-black/10 bg-[#f6f2e8]/90 backdrop-blur">
+    <main className="min-h-screen bg-[#0e1116] text-[#f4f1e8]">
+      <header className="sticky top-0 z-20 border-b border-white/10 bg-[#0e1116]/90 backdrop-blur">
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
-          <Link href="/" className="text-lg font-semibold">
-            Community Studio
+          <Link href="/" aria-label="Community Studio">
+            <BrandLogo />
           </Link>
           <div className="flex items-center gap-2">
             <Link
               href="/works/chair-001/versions/chair-v3/edit"
-              className="rounded-md bg-[#171717] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#3b6f8f]"
+              className="rounded-md bg-[#f4f1e8] px-4 py-2 text-sm font-medium text-[#111418] transition hover:bg-[#d8dfc8]"
             >
               Open Editor
             </Link>
@@ -49,16 +50,16 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               Browse remixable 3D works and branch them into new versions.
             </h1>
           </div>
-          <div className="rounded-lg border border-black/10 bg-white p-4">
+          <div className="rounded-lg border border-white/10 bg-white/[0.06] p-4 shadow-[0_18px_45px_rgb(0_0_0/0.25)]">
             <div className="text-sm font-semibold">Prototype scope</div>
-            <p className="mt-2 text-sm leading-6 text-black/60">
+            <p className="mt-2 text-sm leading-6 text-white/60">
               This skeleton keeps the main routes, mock data, branch model, and
               editor entry ready for the upcoming visual design pass.
             </p>
           </div>
         </div>
 
-        <div className="mb-6 flex flex-col gap-4 border-y border-black/10 py-4 md:flex-row md:items-center md:justify-between">
+        <div className="mb-6 flex flex-col gap-4 border-y border-white/10 py-4 md:flex-row md:items-center md:justify-between">
           <div className="flex flex-wrap gap-2">
             {tabs.map((tab) => {
               const active = activeType === tab.value || (!activeType && !tab.value);
@@ -69,8 +70,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                   href={tab.href}
                   className={`rounded-md px-4 py-2 text-sm font-medium transition ${
                     active
-                      ? "bg-[#171717] text-white"
-                      : "bg-white text-black/65 hover:bg-[#d8dfc8]"
+                      ? "bg-[#f4f1e8] text-[#111418]"
+                      : "bg-white/[0.07] text-white/65 hover:bg-white/[0.12] hover:text-white"
                   }`}
                 >
                   {tab.label}
@@ -78,7 +79,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
               );
             })}
           </div>
-          <div className="flex gap-2 text-sm text-black/55">
+          <div className="flex gap-2 text-sm text-white/50">
             <span>Popular</span>
             <span>/</span>
             <span>Latest</span>
